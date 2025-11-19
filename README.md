@@ -755,13 +755,14 @@ timeout: 60000, // 60 seconds
 **"Module not found" in Browser**
 // Use CDN for browser
 
+```html
 <script src="https://unpkg.com/mailsafepro-sdk@latest/dist/browser.js"></script>
 <script>
   const client = new MailSafePro.MailSafeProClient({
     apiKey: 'your_key'
   });
 </script>
-
+``````
 
 ---
 
