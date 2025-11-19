@@ -232,6 +232,8 @@ colors: true,
 });
 ```
 
+---
+
 ## 💡 Usage Examples
 
 ### Single Email Validation
@@ -532,8 +534,6 @@ console.error('Invalid email in batch');
 
 ---
 
----
-
 ## ⚡ Performance
 
 ### Benchmarks
@@ -564,6 +564,8 @@ await Promise.all(emails.map(email =>
 client.validateEmail({ email })
 ));
 ```
+
+---
 
 ## 📚 API Reference
 
@@ -753,8 +755,15 @@ timeout: 60000, // 60 seconds
 **"Module not found" in Browser**
 // Use CDN for browser
 
-<script src="https://unpkg.com/mailsafepro-sdk@latest/dist/browser.js"></script> <script> const client = new MailSafePro.MailSafeProClient({ apiKey: 'your_key' }); </script>
+<script src="https://unpkg.com/mailsafepro-sdk@latest/dist/browser.js"></script>
+<script>
+  const client = new MailSafePro.MailSafeProClient({
+    apiKey: 'your_key'
+  });
+</script>
 
+
+---
 
 ## 💬 Support
 
