@@ -11,7 +11,7 @@ import {
 import { AuthenticationError, ValidationError } from '../errors';
 import { HttpClient } from '../http/httpClient';
 import type { Logger } from '../utils/logger';
-import { validateEmail, validateApiKey } from '../utils/validation';
+import { validateEmail, validateApiKey, sanitizeEmailForLogging } from '../utils/validation';
 
 import type { UserSession, LoginResponse, RefreshResponse } from './types';
 
@@ -79,7 +79,8 @@ export class AuthClient {
       throw new ValidationError('Password must be at least 8 characters');
     }
 
-    this.logger?.info(`Attempting login for: ${email}`);
+    const sanitizedEmail = sanitizeEmailForLogging(email);
+    this.logger?.info(`Attempting login for: ${sanitizedEmail}`);
 
     try {
       const response = await this.httpClient.post<LoginResponse>(API_ENDPOINTS.LOGIN, {
@@ -91,7 +92,7 @@ export class AuthClient {
       this.session = session;
 
       this.logger?.info('Login successful', {
-        email: session.email,
+        email: sanitizedEmail,
         expiresAt: session.expiresAt,
         scopes: session.scopes,
       });
@@ -102,10 +103,11 @@ export class AuthClient {
       }
 
       return session;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger?.error('Login failed', {
-        email,
-        error: error.message,
+        email: sanitizedEmail,
+        error: errorMessage,
       });
       throw error;
     }
@@ -126,7 +128,8 @@ export class AuthClient {
       throw new ValidationError('Password must be at least 8 characters');
     }
 
-    this.logger?.info(`Attempting registration for: ${email}`);
+    const sanitizedEmail = sanitizeEmailForLogging(email);
+    this.logger?.info(`Attempting registration for: ${sanitizedEmail}`);
 
     try {
       const response = await this.httpClient.post<LoginResponse>(API_ENDPOINTS.REGISTER, {
@@ -138,7 +141,7 @@ export class AuthClient {
       const session = this.createSessionFromResponse(response);
       this.session = session;
 
-      this.logger?.info('Registration successful', { email: session.email });
+      this.logger?.info('Registration successful', { email: sanitizedEmail });
 
       // Programar refresh automático
       if (this.autoRefresh) {
@@ -146,10 +149,11 @@ export class AuthClient {
       }
 
       return session;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger?.error('Registration failed', {
-        email,
-        error: error.message,
+        email: sanitizedEmail,
+        error: errorMessage,
       });
       throw error;
     }

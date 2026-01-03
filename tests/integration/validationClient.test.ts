@@ -100,6 +100,32 @@ describe('ValidationClient', () => {
 
       expect(result.dnsRecords).toBeDefined();
     });
+
+    it('should reject invalid checkSmtp type', async () => {
+      await expect(
+        validationClient.validateEmail({
+          email: 'test@example.com',
+          checkSmtp: 'true' as any,
+        }),
+      ).rejects.toThrow(ValidationError);
+    });
+
+    it('should reject invalid includeRawDns type', async () => {
+      await expect(
+        validationClient.validateEmail({
+          email: 'test@example.com',
+          includeRawDns: 'true' as any,
+        }),
+      ).rejects.toThrow(ValidationError);
+    });
+
+    it('should handle API error', async () => {
+      mockHttpClient.post.mockRejectedValue(new Error('API Error'));
+
+      await expect(
+        validationClient.validateEmail({ email: 'test@example.com' }),
+      ).rejects.toThrow('API Error');
+    });
   });
 
   describe('batchValidateEmails', () => {
@@ -228,6 +254,36 @@ describe('ValidationClient', () => {
 
       expect(result.jobId).toBe('job_456');
     });
+
+    it('should reject null file', async () => {
+      await expect(validationClient.uploadFileBatch(null as any)).rejects.toThrow(ValidationError);
+    });
+
+    it('should reject file too large', async () => {
+      // Create a buffer larger than 10MB
+      const largeBuffer = Buffer.alloc(11 * 1024 * 1024);
+      
+      await expect(validationClient.uploadFileBatch(largeBuffer)).rejects.toThrow(ValidationError);
+    });
+
+    it('should upload with checkSmtp option', async () => {
+      const mockResponse = {
+        jobId: 'job_789',
+        status: 'processing',
+        progress: 0,
+      };
+
+      mockHttpClient.post.mockResolvedValue(mockResponse);
+
+      const fileBuffer = Buffer.from('test@example.com');
+
+      const result = await validationClient.uploadFileBatch(fileBuffer, {
+        checkSmtp: true,
+        includeRawDns: true,
+      });
+
+      expect(result.jobId).toBe('job_789');
+    });
   });
 
   describe('getBatchStatus', () => {
@@ -283,6 +339,19 @@ describe('ValidationClient', () => {
         jobId: 'job_123',
         status: 'processing',
         progress: 50,
+      };
+
+      mockHttpClient.get.mockResolvedValue(mockStatus);
+
+      await expect(validationClient.getBatchResults('job_123')).rejects.toThrow(ValidationError);
+    });
+
+    it('should throw when results not available', async () => {
+      const mockStatus = {
+        jobId: 'job_123',
+        status: 'completed',
+        progress: 100,
+        results: null,
       };
 
       mockHttpClient.get.mockResolvedValue(mockStatus);
@@ -354,6 +423,34 @@ describe('ValidationClient', () => {
       expect(onProgress).toHaveBeenCalled();
     });
 
+    it('should handle progress callback error gracefully', async () => {
+      const onProgress = jest.fn().mockImplementation(() => {
+        throw new Error('Callback error');
+      });
+
+      const mockStatus = {
+        jobId: 'job_123',
+        status: 'completed',
+        progress: 100,
+        results: {
+          results: [],
+          validCount: 0,
+          invalidCount: 0,
+          processingTime: 100,
+        },
+      };
+
+      mockHttpClient.get.mockResolvedValue(mockStatus);
+
+      // Should not throw despite callback error
+      const result = await validationClient.waitForBatchCompletion('job_123', {
+        pollInterval: 10,
+        onProgress,
+      });
+
+      expect(result).toBeDefined();
+    });
+
     it('should throw on failed batch', async () => {
       mockHttpClient.get.mockResolvedValue({
         jobId: 'job_123',
@@ -364,6 +461,19 @@ describe('ValidationClient', () => {
       await expect(
         validationClient.waitForBatchCompletion('job_123', { pollInterval: 10 }),
       ).rejects.toThrow('Batch job failed');
+    });
+
+    it('should throw when results not available on completion', async () => {
+      mockHttpClient.get.mockResolvedValue({
+        jobId: 'job_123',
+        status: 'completed',
+        progress: 100,
+        results: null,
+      });
+
+      await expect(
+        validationClient.waitForBatchCompletion('job_123', { pollInterval: 10 }),
+      ).rejects.toThrow(ValidationError);
     });
 
     it('should timeout if taking too long', async () => {

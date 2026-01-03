@@ -7,7 +7,7 @@ import { API_ENDPOINTS, MAX_BATCH_SIZE, UPLOAD_TIMEOUT } from '../config/default
 import { ValidationError } from '../errors';
 import { HttpClient } from '../http/httpClient';
 import type { Logger } from '../utils/logger';
-import { validateEmail, validateEmails, validateBatchOptions } from '../utils/validation';
+import { validateEmail, validateEmails, validateBatchOptions, validateJobId, sanitizeEmailForLogging } from '../utils/validation';
 
 import type {
   EmailValidationRequest,
@@ -63,7 +63,10 @@ export class ValidationClient {
       throw new ValidationError('includeRawDns must be a boolean');
     }
 
-    this.logger?.info(`Validating email: ${request.email}`, {
+    // Sanitizar email para logging
+    const sanitizedEmail = sanitizeEmailForLogging(request.email);
+    
+    this.logger?.info(`Validating email: ${sanitizedEmail}`, {
       checkSmtp: request.checkSmtp,
       includeRawDns: request.includeRawDns,
     });
@@ -77,16 +80,17 @@ export class ValidationClient {
       );
 
       this.logger?.debug('Email validation completed', {
-        email: request.email,
+        email: sanitizedEmail,
         valid: response.valid,
         riskScore: response.riskScore,
       });
 
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger?.error('Email validation failed', {
-        email: request.email,
-        error: error.message,
+        email: sanitizedEmail,
+        error: errorMessage,
       });
       throw error;
     }
@@ -127,10 +131,11 @@ export class ValidationClient {
       });
 
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger?.error('Batch validation failed', {
         count: request.emails.length,
-        error: error.message,
+        error: errorMessage,
       });
       throw error;
     }
@@ -147,9 +152,17 @@ export class ValidationClient {
       throw new ValidationError('File is required for batch upload');
     }
 
+    // Validar tamaño del archivo si es posible
+    const fileSize = file instanceof Buffer ? file.length : (file as Blob).size;
+    const maxFileSize = 10 * 1024 * 1024; // 10MB
+    if (fileSize > maxFileSize) {
+      throw new ValidationError(`File too large: ${fileSize} bytes (max ${maxFileSize} bytes)`);
+    }
+
     this.logger?.info('Uploading file for batch validation', {
       filename: options?.filename,
       contentType: options?.contentType,
+      size: fileSize,
     });
 
     try {
@@ -194,10 +207,11 @@ export class ValidationClient {
       });
 
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger?.error('File upload failed', {
         filename: options?.filename,
-        error: error.message,
+        error: errorMessage,
       });
       throw error;
     }
@@ -207,9 +221,7 @@ export class ValidationClient {
    * Obtiene el estado de un trabajo batch
    */
   async getBatchStatus(jobId: string): Promise<BatchJobStatus> {
-    if (!jobId || typeof jobId !== 'string') {
-      throw new ValidationError('Job ID is required and must be a string');
-    }
+    validateJobId(jobId);
 
     this.logger?.debug(`Getting batch status for job: ${jobId}`);
 
@@ -226,10 +238,11 @@ export class ValidationClient {
       });
 
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger?.error('Failed to get batch status', {
         jobId,
-        error: error.message,
+        error: errorMessage,
       });
       throw error;
     }
@@ -325,9 +338,7 @@ export class ValidationClient {
    * Cancela un trabajo batch en progreso
    */
   async cancelBatch(jobId: string): Promise<void> {
-    if (!jobId || typeof jobId !== 'string') {
-      throw new ValidationError('Job ID is required and must be a string');
-    }
+    validateJobId(jobId);
 
     this.logger?.info(`Cancelling batch job: ${jobId}`);
 
@@ -338,10 +349,11 @@ export class ValidationClient {
       await this.httpClient.post(url, {}, { headers });
 
       this.logger?.info(`Batch job cancelled: ${jobId}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger?.error('Failed to cancel batch job', {
         jobId,
-        error: error.message,
+        error: errorMessage,
       });
       throw error;
     }

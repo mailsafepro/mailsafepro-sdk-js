@@ -8,6 +8,9 @@ import {
   validateDomain,
   validateApiKey,
   validateBaseURL,
+  validateTimeout,
+  validateJobId,
+  sanitizeEmailForLogging,
 } from '../../src/utils/validation';
 import { ValidationError } from '../../src/errors';
 import { ConfigurationError } from '../../dist';
@@ -151,6 +154,91 @@ describe('Validation Utils', () => {
 
     it('should reject empty string', () => {
       expect(() => validateBaseURL('' as any)).toThrow('Base URL is required');
+    });
+  });
+
+  describe('validateTimeout', () => {
+    it('should accept valid timeout values', () => {
+      expect(() => validateTimeout(5000)).not.toThrow();
+      expect(() => validateTimeout(30000)).not.toThrow();
+      expect(() => validateTimeout(60000)).not.toThrow();
+    });
+
+    it('should reject timeout too short', () => {
+      expect(() => validateTimeout(500)).toThrow(ValidationError);
+      expect(() => validateTimeout(100)).toThrow(ValidationError);
+    });
+
+    it('should reject timeout too long', () => {
+      expect(() => validateTimeout(400000)).toThrow(ValidationError);
+    });
+
+    it('should reject non-number timeout', () => {
+      expect(() => validateTimeout('5000' as any)).toThrow(ValidationError);
+      expect(() => validateTimeout(NaN)).toThrow(ValidationError);
+    });
+  });
+
+  describe('validateJobId', () => {
+    it('should accept valid job IDs', () => {
+      expect(() => validateJobId('job_123')).not.toThrow();
+      expect(() => validateJobId('abc-def-123')).not.toThrow();
+      expect(() => validateJobId('JOB_ABC_123')).not.toThrow();
+    });
+
+    it('should reject empty job ID', () => {
+      expect(() => validateJobId('')).toThrow(ValidationError);
+      expect(() => validateJobId('   ')).toThrow(ValidationError);
+    });
+
+    it('should reject job ID with invalid characters', () => {
+      expect(() => validateJobId('job@123')).toThrow(ValidationError);
+      expect(() => validateJobId('job 123')).toThrow(ValidationError);
+    });
+
+    it('should reject non-string job ID', () => {
+      expect(() => validateJobId(123 as any)).toThrow(ValidationError);
+      expect(() => validateJobId(null as any)).toThrow(ValidationError);
+    });
+  });
+
+  describe('sanitizeEmailForLogging', () => {
+    it('should mask email local part', () => {
+      const result = sanitizeEmailForLogging('john.doe@example.com');
+      expect(result).not.toContain('john.doe');
+      expect(result).toContain('@example.com');
+      expect(result).toContain('*');
+    });
+
+    it('should handle short local parts', () => {
+      const result = sanitizeEmailForLogging('ab@example.com');
+      expect(result).toContain('@example.com');
+    });
+
+    it('should handle very short local parts (1-2 chars)', () => {
+      const result1 = sanitizeEmailForLogging('a@example.com');
+      expect(result1).toContain('@example.com');
+      
+      const result2 = sanitizeEmailForLogging('ab@example.com');
+      expect(result2).toContain('@example.com');
+    });
+
+    it('should handle invalid emails', () => {
+      expect(sanitizeEmailForLogging('')).toBe('[invalid]');
+      expect(sanitizeEmailForLogging('invalid')).toBe('[invalid]');
+      expect(sanitizeEmailForLogging(null as any)).toBe('[invalid]');
+      expect(sanitizeEmailForLogging(undefined as any)).toBe('[invalid]');
+    });
+
+    it('should preserve domain', () => {
+      const result = sanitizeEmailForLogging('user@gmail.com');
+      expect(result).toContain('@gmail.com');
+    });
+
+    it('should handle medium length local parts', () => {
+      const result = sanitizeEmailForLogging('john@example.com');
+      expect(result).toContain('@example.com');
+      expect(result).toContain('*');
     });
   });
 });

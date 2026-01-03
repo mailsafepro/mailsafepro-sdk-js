@@ -762,7 +762,7 @@ timeout: 60000, // 60 seconds
     apiKey: 'your_key'
   });
 </script>
-``````
+```
 
 ---
 

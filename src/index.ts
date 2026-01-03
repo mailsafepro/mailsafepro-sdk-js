@@ -65,6 +65,9 @@ export {
   validateApiKey,
   validateBaseURL,
   validateBatchOptions,
+  validateTimeout,
+  validateJobId,
+  sanitizeEmailForLogging,
 } from './utils/validation';
 
 // Interceptors

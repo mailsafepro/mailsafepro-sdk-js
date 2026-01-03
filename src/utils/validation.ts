@@ -7,6 +7,17 @@ import { ValidationError, ConfigurationError } from '../errors';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DOMAIN_LABEL_REGEX = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/;
+const API_KEY_REGEX = /^[A-Za-z0-9_\-]+$/;
+
+// Constantes de validación
+const MAX_EMAIL_LENGTH = 320;
+const MAX_LOCAL_PART_LENGTH = 64;
+const MAX_DOMAIN_LENGTH = 253;
+const MAX_DOMAIN_LABEL_LENGTH = 63;
+const MIN_API_KEY_LENGTH = 20;
+const MAX_BATCH_SIZE = 1000;
+const MIN_TIMEOUT = 1000; // 1 segundo mínimo
+const MAX_TIMEOUT = 300000; // 5 minutos máximo
 
 /**
  * Valida formato de email según RFC 5321
@@ -30,8 +41,8 @@ export function validateEmail(email: string): void {
   }
 
   // Longitud total máxima (RFC 5321)
-  if (email.length > 320) {
-    throw new ValidationError(`Email too long: ${email.length} characters (max 320)`);
+  if (email.length > MAX_EMAIL_LENGTH) {
+    throw new ValidationError(`Email too long: ${email.length} characters (max ${MAX_EMAIL_LENGTH})`);
   }
 
   // Verificar estructura básica
@@ -53,8 +64,8 @@ export function validateEmail(email: string): void {
     throw new ValidationError('Local part cannot be empty');
   }
 
-  if (localPart.length > 64) {
-    throw new ValidationError(`Local part too long: ${localPart.length} characters (max 64)`);
+  if (localPart.length > MAX_LOCAL_PART_LENGTH) {
+    throw new ValidationError(`Local part too long: ${localPart.length} characters (max ${MAX_LOCAL_PART_LENGTH})`);
   }
 
   // No puede empezar o terminar con punto
@@ -83,16 +94,17 @@ export function validateEmails(emails: string[]): void {
     throw new ValidationError('Emails array cannot be empty');
   }
 
-  if (emails.length > 1000) {
-    throw new ValidationError(`Batch size too large: ${emails.length} emails (max 1000)`);
+  if (emails.length > MAX_BATCH_SIZE) {
+    throw new ValidationError(`Batch size too large: ${emails.length} emails (max ${MAX_BATCH_SIZE})`);
   }
 
   // Validar cada email y reportar índice en caso de error
   emails.forEach((email, index) => {
     try {
       validateEmail(email);
-    } catch (error: any) {
-      throw new ValidationError(`Invalid email at index ${index}: ${error.message}`, {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new ValidationError(`Invalid email at index ${index}: ${errorMessage}`, {
         index,
         email,
         originalError: error,
@@ -124,8 +136,8 @@ export function validateDomain(domain: string): void {
   }
 
   // Longitud máxima (RFC 1035)
-  if (trimmed.length > 253) {
-    throw new ValidationError(`Domain too long: ${trimmed.length} characters (max 253)`);
+  if (trimmed.length > MAX_DOMAIN_LENGTH) {
+    throw new ValidationError(`Domain too long: ${trimmed.length} characters (max ${MAX_DOMAIN_LENGTH})`);
   }
 
   // Dividir en labels
@@ -141,9 +153,9 @@ export function validateDomain(domain: string): void {
       throw new ValidationError(`Domain label ${index} is empty`);
     }
 
-    if (label.length > 63) {
+    if (label.length > MAX_DOMAIN_LABEL_LENGTH) {
       throw new ValidationError(
-        `Domain label too long: "${label}" (${label.length} characters, max 63)`,
+        `Domain label too long: "${label}" (${label.length} characters, max ${MAX_DOMAIN_LABEL_LENGTH})`,
       );
     }
 
@@ -178,15 +190,81 @@ export function validateApiKey(apiKey: string): void {
     throw new ValidationError('API Key contains leading or trailing whitespace');
   }
 
-  if (apiKey.length < 20) {
-    throw new ValidationError('API Key appears to be invalid (too short, minimum 20 characters)');
+  if (apiKey.length < MIN_API_KEY_LENGTH) {
+    throw new ValidationError(`API Key appears to be invalid (too short, minimum ${MIN_API_KEY_LENGTH} characters)`);
   }
 
   // Verificar caracteres válidos
-  if (!/^[A-Za-z0-9_\-]+$/.test(apiKey)) {
+  if (!API_KEY_REGEX.test(apiKey)) {
     throw new ValidationError(
       'API Key contains invalid characters (only alphanumeric, underscore, and hyphen allowed)',
     );
+  }
+}
+
+/**
+ * Valida timeout value
+ */
+export function validateTimeout(timeout: number): void {
+  if (typeof timeout !== 'number' || isNaN(timeout)) {
+    throw new ValidationError('Timeout must be a valid number');
+  }
+
+  if (timeout < MIN_TIMEOUT) {
+    throw new ValidationError(`Timeout too short: ${timeout}ms (minimum ${MIN_TIMEOUT}ms)`);
+  }
+
+  if (timeout > MAX_TIMEOUT) {
+    throw new ValidationError(`Timeout too long: ${timeout}ms (maximum ${MAX_TIMEOUT}ms)`);
+  }
+}
+
+/**
+ * Sanitiza email para logging (oculta parte del local part)
+ */
+export function sanitizeEmailForLogging(email: string): string {
+  if (!email || typeof email !== 'string') {
+    return '[invalid]';
+  }
+
+  const atIndex = email.lastIndexOf('@');
+  if (atIndex === -1) {
+    return '[invalid]';
+  }
+
+  const localPart = email.substring(0, atIndex);
+  const domain = email.substring(atIndex + 1);
+
+  if (localPart.length <= 2) {
+    return `${'*'.repeat(localPart.length)}@${domain}`;
+  }
+
+  const visibleChars = Math.min(2, Math.floor(localPart.length / 3));
+  const maskedPart = localPart.substring(0, visibleChars) + '*'.repeat(localPart.length - visibleChars);
+  
+  return `${maskedPart}@${domain}`;
+}
+
+/**
+ * Valida job ID format
+ */
+export function validateJobId(jobId: string): void {
+  if (!jobId || typeof jobId !== 'string') {
+    throw new ValidationError('Job ID is required and must be a string');
+  }
+
+  const trimmed = jobId.trim();
+  if (!trimmed) {
+    throw new ValidationError('Job ID cannot be empty');
+  }
+
+  if (jobId !== trimmed) {
+    throw new ValidationError('Job ID contains leading or trailing whitespace');
+  }
+
+  // Job IDs típicamente son alfanuméricos con guiones/underscores
+  if (!/^[A-Za-z0-9_\-]+$/.test(jobId)) {
+    throw new ValidationError('Job ID contains invalid characters');
   }
 }
 
