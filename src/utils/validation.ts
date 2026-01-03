@@ -42,7 +42,9 @@ export function validateEmail(email: string): void {
 
   // Longitud total máxima (RFC 5321)
   if (email.length > MAX_EMAIL_LENGTH) {
-    throw new ValidationError(`Email too long: ${email.length} characters (max ${MAX_EMAIL_LENGTH})`);
+    throw new ValidationError(
+      `Email too long: ${email.length} characters (max ${MAX_EMAIL_LENGTH})`,
+    );
   }
 
   // Verificar estructura básica
@@ -65,7 +67,9 @@ export function validateEmail(email: string): void {
   }
 
   if (localPart.length > MAX_LOCAL_PART_LENGTH) {
-    throw new ValidationError(`Local part too long: ${localPart.length} characters (max ${MAX_LOCAL_PART_LENGTH})`);
+    throw new ValidationError(
+      `Local part too long: ${localPart.length} characters (max ${MAX_LOCAL_PART_LENGTH})`,
+    );
   }
 
   // No puede empezar o terminar con punto
@@ -95,7 +99,9 @@ export function validateEmails(emails: string[]): void {
   }
 
   if (emails.length > MAX_BATCH_SIZE) {
-    throw new ValidationError(`Batch size too large: ${emails.length} emails (max ${MAX_BATCH_SIZE})`);
+    throw new ValidationError(
+      `Batch size too large: ${emails.length} emails (max ${MAX_BATCH_SIZE})`,
+    );
   }
 
   // Validar cada email y reportar índice en caso de error
@@ -137,7 +143,9 @@ export function validateDomain(domain: string): void {
 
   // Longitud máxima (RFC 1035)
   if (trimmed.length > MAX_DOMAIN_LENGTH) {
-    throw new ValidationError(`Domain too long: ${trimmed.length} characters (max ${MAX_DOMAIN_LENGTH})`);
+    throw new ValidationError(
+      `Domain too long: ${trimmed.length} characters (max ${MAX_DOMAIN_LENGTH})`,
+    );
   }
 
   // Dividir en labels
@@ -191,7 +199,9 @@ export function validateApiKey(apiKey: string): void {
   }
 
   if (apiKey.length < MIN_API_KEY_LENGTH) {
-    throw new ValidationError(`API Key appears to be invalid (too short, minimum ${MIN_API_KEY_LENGTH} characters)`);
+    throw new ValidationError(
+      `API Key appears to be invalid (too short, minimum ${MIN_API_KEY_LENGTH} characters)`,
+    );
   }
 
   // Verificar caracteres válidos
@@ -240,8 +250,9 @@ export function sanitizeEmailForLogging(email: string): string {
   }
 
   const visibleChars = Math.min(2, Math.floor(localPart.length / 3));
-  const maskedPart = localPart.substring(0, visibleChars) + '*'.repeat(localPart.length - visibleChars);
-  
+  const maskedPart =
+    localPart.substring(0, visibleChars) + '*'.repeat(localPart.length - visibleChars);
+
   return `${maskedPart}@${domain}`;
 }
 

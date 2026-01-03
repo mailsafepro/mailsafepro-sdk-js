@@ -122,9 +122,9 @@ describe('ValidationClient', () => {
     it('should handle API error', async () => {
       mockHttpClient.post.mockRejectedValue(new Error('API Error'));
 
-      await expect(
-        validationClient.validateEmail({ email: 'test@example.com' }),
-      ).rejects.toThrow('API Error');
+      await expect(validationClient.validateEmail({ email: 'test@example.com' })).rejects.toThrow(
+        'API Error',
+      );
     });
   });
 
@@ -262,7 +262,7 @@ describe('ValidationClient', () => {
     it('should reject file too large', async () => {
       // Create a buffer larger than 10MB
       const largeBuffer = Buffer.alloc(11 * 1024 * 1024);
-      
+
       await expect(validationClient.uploadFileBatch(largeBuffer)).rejects.toThrow(ValidationError);
     });
 

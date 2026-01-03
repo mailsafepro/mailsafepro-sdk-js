@@ -7,7 +7,13 @@ import { API_ENDPOINTS, MAX_BATCH_SIZE, UPLOAD_TIMEOUT } from '../config/default
 import { ValidationError } from '../errors';
 import { HttpClient } from '../http/httpClient';
 import type { Logger } from '../utils/logger';
-import { validateEmail, validateEmails, validateBatchOptions, validateJobId, sanitizeEmailForLogging } from '../utils/validation';
+import {
+  validateEmail,
+  validateEmails,
+  validateBatchOptions,
+  validateJobId,
+  sanitizeEmailForLogging,
+} from '../utils/validation';
 
 import type {
   EmailValidationRequest,
@@ -65,7 +71,7 @@ export class ValidationClient {
 
     // Sanitizar email para logging
     const sanitizedEmail = sanitizeEmailForLogging(request.email);
-    
+
     this.logger?.info(`Validating email: ${sanitizedEmail}`, {
       checkSmtp: request.checkSmtp,
       includeRawDns: request.includeRawDns,

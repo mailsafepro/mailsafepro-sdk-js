@@ -218,7 +218,7 @@ describe('Validation Utils', () => {
     it('should handle very short local parts (1-2 chars)', () => {
       const result1 = sanitizeEmailForLogging('a@example.com');
       expect(result1).toContain('@example.com');
-      
+
       const result2 = sanitizeEmailForLogging('ab@example.com');
       expect(result2).toContain('@example.com');
     });
