@@ -48,7 +48,7 @@ describe('ValidationClient', () => {
 
       expect(result).toEqual(mockResponse);
       expect(mockHttpClient.post).toHaveBeenCalledWith(
-        '/email/validate',
+        '/validate/email',
         {
           email: 'test@example.com',
           checkSmtp: true,
@@ -148,7 +148,7 @@ describe('ValidationClient', () => {
 
       expect(result).toEqual(mockResponse);
       expect(mockHttpClient.post).toHaveBeenCalledWith(
-        '/email/batch',
+        '/validate/batch',
         {
           emails: ['test1@example.com', 'test2@example.com'],
         },
@@ -301,7 +301,7 @@ describe('ValidationClient', () => {
       const result = await validationClient.getBatchStatus('job_123');
 
       expect(result).toEqual(mockStatus);
-      expect(mockHttpClient.get).toHaveBeenCalledWith('/email/batch/job_123', expect.any(Object));
+      expect(mockHttpClient.get).toHaveBeenCalledWith('/jobs/job_123', expect.any(Object));
     });
 
     it('should reject invalid job ID', async () => {

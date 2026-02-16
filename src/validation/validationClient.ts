@@ -158,8 +158,14 @@ export class ValidationClient {
       throw new ValidationError('File is required for batch upload');
     }
 
-    // Validar tamaño del archivo si es posible
-    const fileSize = file instanceof Buffer ? file.length : (file as Blob).size;
+    // Validar tamaño del archivo
+    let fileSize: number;
+    if (file instanceof Buffer) {
+      fileSize = file.length;
+    } else {
+      // TypeScript no hace narrowing automático, pero sabemos que es Blob | File
+      fileSize = (file as Blob | File).size;
+    }
     const maxFileSize = 10 * 1024 * 1024; // 10MB
     if (fileSize > maxFileSize) {
       throw new ValidationError(`File too large: ${fileSize} bytes (max ${maxFileSize} bytes)`);
@@ -180,14 +186,18 @@ export class ValidationClient {
       const formData = new FormData();
 
       if (file instanceof Buffer) {
-        // Node.js Buffer
-        const blob = new Blob([file], {
+        // Node.js Buffer - convertir a ArrayBuffer para compatibilidad con Blob
+        const arrayBuffer = file.buffer.slice(
+          file.byteOffset,
+          file.byteOffset + file.byteLength,
+        ) as ArrayBuffer;
+        const blob = new Blob([arrayBuffer], {
           type: options?.contentType || 'application/octet-stream',
         });
         formData.append('file', blob, options?.filename || 'emails.csv');
       } else {
-        // Browser File/Blob
-        formData.append('file', file, options?.filename);
+        // Browser File/Blob - TypeScript no hace narrowing automático aquí
+        formData.append('file', file as Blob | File, options?.filename);
       }
 
       // Agregar opciones adicionales si existen
